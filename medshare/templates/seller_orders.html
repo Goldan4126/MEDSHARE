@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% from '_pagination.html' import render_pager %}
+{% block content %}
+<div class="container py-4">
+
+{% if expiring_medicines %}
+<div class="card mb-4" style="border-left: 5px solid var(--rose-500); border-radius: 12px;">
+  <div class="card-body">
+    <h5 class="mb-2">⚠️ {{ expiring_medicines|length }} of your medicine{{ 's' if expiring_medicines|length != 1 else '' }} expiring soon</h5>
+    <p class="text-muted mb-3">Consider increasing the discount to sell faster before they expire.</p>
+    <div class="row g-2">
+      {% for m in expiring_medicines %}
+      <div class="col-md-6">
+        <div class="d-flex justify-content-between align-items-center p-2" style="background:#fff1f2; border-radius:10px;">
+          <div>
+            <strong>{{ m.name }}</strong>
+            <span class="badge bg-danger ms-1">{{ m.days_to_expiry }} day{{ 's' if m.days_to_expiry != 1 else '' }} left</span>
+            <div class="small text-muted">Current discount: {{ m.discount_percent }}% &middot; Stock: {{ m.quantity }}</div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<h3 class="mb-3">Orders Received</h3>
+<table class="table table-bordered bg-white">
+  <thead>
+    <tr><th>Medicine</th><th>User</th><th>Quantity</th><th>Payment</th><th>Delivery Address</th><th>Date</th><th>Status</th><th>Update</th></tr>
+  </thead>
+  <tbody>
+    {% for o in orders %}
+    <tr>
+      <td>{{ o.medicine.name }}</td>
+      <td>{{ o.user.name }}</td>
+      <td>{{ o.quantity }} <span class="small text-muted">(₹{{ o.line_total }})</span></td>
+      <td class="small">
+        {% if o.payment_method == 'Online' %}
+          {% if o.payment_status == 'Paid' %}<span class="badge bg-success">Paid online</span>
+          {% elif o.payment_status in ('Refund Pending', 'Refunding') %}<span class="badge bg-warning text-dark">Refund pending</span>
+          {% elif o.payment_status == 'Refunded' %}<span class="badge bg-info text-dark">Refunded</span>
+          {% elif o.status == 'Cancelled' %}<span class="badge bg-secondary">Not paid</span>
+          {% else %}<span class="badge bg-danger">Awaiting payment</span>{% endif %}
+        {% else %}<span class="badge bg-secondary">COD</span>{% endif %}
+      </td>
+      <td class="small">{{ o.delivery_address }}</td>
+      <td>{{ o.order_date|ist }}</td>
+      <td><span class="badge bg-{{ 'success' if o.status=='Delivered' else 'warning' if o.status=='Pending' else 'danger' if o.status=='Cancelled' else 'info' }}">{{ o.status }}</span></td>
+      <td>
+        {% if o.status == 'Cancelled' %}
+        <span class="text-muted small">{{ o.cancel_note or 'Cancelled by user' }}</span>
+        {% elif o.status == 'Delivered' %}
+        <span class="text-muted small">Completed</span>
+        {% else %}
+        <form method="POST" action="{{ url_for('update_order_status', order_id=o.id) }}" class="d-flex gap-1">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <select name="status" class="form-select form-select-sm">
+            <option value="Pending" {% if o.status=='Pending' %}selected{% endif %}>Pending</option>
+            <option value="Confirmed" {% if o.status=='Confirmed' %}selected{% endif %}>Confirmed</option>
+            <option value="Out for Delivery" {% if o.status=='Out for Delivery' %}selected{% endif %}>Out for Delivery</option>
+            <option value="Delivered" {% if o.status=='Delivered' %}selected{% endif %}>Delivered</option>
+          </select>
+          <button class="btn btn-sm btn-success">Save</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="text-center text-muted">No orders received yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{{ render_pager(pager, 'seller_orders', request.args) }}
+</div>
+{% endblock %}

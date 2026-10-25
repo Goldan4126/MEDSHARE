@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import ferr, inv %}
+{% block title %} - Edit Profile{% endblock %}
+{% block content %}
+{% set f = form or {} %}
+{% set e = errors or {} %}
+<div class="container py-4">
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+    <div class="card form-card">
+      <div class="card-body p-4">
+        <div class="auth-head">
+          <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/></svg></span>
+          <h3>Edit Profile</h3>
+          <p>Correct your seller details here.</p>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Owner Name</label>
+            <input type="text" name="name" class="form-control{{ inv(e, 'name') }}" maxlength="100" value="{{ f.get('name', '') }}" required>
+            {{ ferr(e, 'name') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Pharmacy / Shop Name</label>
+            <input type="text" name="shop_name" class="form-control{{ inv(e, 'shop_name') }}" maxlength="150" value="{{ f.get('shop_name', '') }}" required>
+            {{ ferr(e, 'shop_name') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control{{ inv(e, 'email') }}" maxlength="120" value="{{ f.get('email', '') }}" required>
+            {{ ferr(e, 'email') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Contact Phone Number</label>
+            <input type="text" class="form-control" value="{{ current_user.phone or '—' }}" disabled>
+            <div class="form-text">Phone number cannot be changed.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Shop Photo <span class="text-muted">(optional)</span></label>
+            <label for="shopPhotoInput" class="upload-box d-block">
+              <div id="uploadHint">📷 Click to {{ 'change' if current_user.shop_photo else 'upload' }} the shop photo (PNG/JPG, max 5MB)</div>
+              <img id="imagePreview" alt="Preview"{% if current_user.shop_photo %} src="{{ url_for('media', filename=current_user.shop_photo) }}" style="display:block;"{% endif %}>
+            </label>
+            <input type="file" id="shopPhotoInput" name="shop_photo" accept=".png,.jpg,.jpeg,.webp" class="d-none">
+            {{ ferr(e, 'shop_photo') }}
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-success flex-fill">Save Changes</button>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+document.getElementById('shopPhotoInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  const preview = document.getElementById('imagePreview');
+  const hint = document.getElementById('uploadHint');
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      preview.src = ev.target.result;
+      preview.style.display = 'block';
+      hint.textContent = '✅ ' + file.name + ' — click to change';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+</script>
+{% endblock %}

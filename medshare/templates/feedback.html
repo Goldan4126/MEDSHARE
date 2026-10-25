@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import ferr, inv %}
+{% block content %}
+{% set f = form or {} %}
+{% set e = errors or {} %}
+<div class="container py-4">
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card form-card mb-4">
+      <div class="card-body p-4">
+        <h3 class="mb-1">We'd Love Your Feedback</h3>
+        <p class="text-muted mb-3">Tell us about your experience with MedShare</p>
+        <form method="POST">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Rating</label>
+            <div class="star-rating" id="starRating">
+              {% for i in range(1,6) %}
+              <span class="star" data-value="{{ i }}">★</span>
+              {% endfor %}
+            </div>
+            <input type="hidden" name="rating" id="ratingInput" value="{{ f.get('rating', 5) }}">
+            {{ ferr(e, 'rating') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Your Message</label>
+            <textarea name="message" class="form-control{{ inv(e, 'message') }}" rows="4" placeholder="What did you like? What can we improve?" required>{{ f.get('message', '') }}</textarea>
+            {{ ferr(e, 'message') }}
+          </div>
+          <button class="btn btn-success w-100">Submit Feedback</button>
+        </form>
+      </div>
+    </div>
+
+    {% if my_feedback %}
+    <h5 class="mb-3">Your Previous Feedback</h5>
+    {% for f in my_feedback %}
+    <div class="card med-card mb-3">
+      <div class="card-body">
+        <div class="mb-1">
+          {% for i in range(1,6) %}
+            {% if i <= f.rating %}<span style="color:var(--amber-500);">★</span>{% else %}<span style="color:#e5e7eb;">★</span>{% endif %}
+          {% endfor %}
+        </div>
+        <p class="mb-1">{{ f.message }}</p>
+        <p class="small text-muted mb-0">{{ f.created_at|ist }}</p>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+</div>
+</div>
+
+<style>
+.star-rating { font-size: 2rem; cursor: pointer; }
+.star-rating .star { color: #e5e7eb; transition: color .15s; }
+.star-rating .star.active { color: var(--amber-500); }
+</style>
+
+<script>
+const stars = document.querySelectorAll('#starRating .star');
+const ratingInput = document.getElementById('ratingInput');
+
+function highlight(value) {
+  stars.forEach(s => {
+    s.classList.toggle('active', parseInt(s.dataset.value) <= value);
+  });
+}
+highlight(parseInt(ratingInput.value) || 5);
+
+stars.forEach(star => {
+  star.addEventListener('click', () => {
+    const value = parseInt(star.dataset.value);
+    ratingInput.value = value;
+    highlight(value);
+  });
+  star.addEventListener('mouseenter', () => highlight(parseInt(star.dataset.value)));
+  star.addEventListener('mouseleave', () => highlight(parseInt(ratingInput.value)));
+});
+</script>
+{% endblock %}

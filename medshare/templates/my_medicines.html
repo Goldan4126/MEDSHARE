@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+
+  <div class="page-head">
+    <div>
+      <p class="section-eyebrow mb-1">Seller Hub</p>
+      <h3>My Medicines</h3>
+      <p>Manage your listings — update stock and discount, or remove a listing.</p>
+    </div>
+    <a href="{{ url_for('add_medicine') }}" class="btn btn-success">+ Add Medicine</a>
+  </div>
+
+  {% if medicines %}
+  <div class="table-scroll">
+  <table class="table align-middle">
+    <thead>
+      <tr><th>Medicine</th><th>Price</th><th>Stock</th><th>Expiry</th><th>Status</th><th class="text-end">Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for m in medicines %}
+      <tr>
+        <td>
+          <div class="d-flex align-items-center gap-3">
+            {% if m.image_filename %}
+            <img class="thumb" src="{{ url_for('media', filename=m.image_filename) }}" alt="{{ m.name }}">
+            {% else %}
+            <div class="thumb-ph">💊</div>
+            {% endif %}
+            <div>
+              <a href="{{ url_for('medicine_detail', med_id=m.id) }}" class="fw-semibold text-decoration-none" style="color:var(--ink);">{{ m.name }}</a>
+              <div class="small text-muted">{{ m.category or '—' }}{% if m.generic_name %} &middot; {{ m.generic_name }}{% endif %}</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <strong>₹{{ m.discounted_price }}</strong>
+          <div class="small text-muted"><span class="text-decoration-line-through">₹{{ m.original_price }}</span> &middot; {{ m.discount_percent }}% off</div>
+        </td>
+        <td>{{ m.quantity }}</td>
+        <td>
+          {{ m.expiry_date }}
+          {% if m.is_expired %}<div class="small text-danger">Expired</div>
+          {% elif m.days_to_expiry <= 30 %}<div class="small text-warning">{{ m.days_to_expiry }} days left</div>{% endif %}
+        </td>
+        <td>
+          {% if m.status == 'pending' %}<span class="badge bg-warning text-dark">Pending approval</span>
+          {% elif m.status == 'rejected' %}<span class="badge bg-danger">Rejected</span>
+          {% elif m.is_expired %}<span class="badge bg-dark">Expired</span>
+          {% elif m.quantity <= 0 %}<span class="badge bg-secondary">Out of stock</span>
+          {% else %}<span class="badge bg-success">Live</span>{% endif %}
+        </td>
+        <td class="text-end">
+          <div class="d-inline-flex gap-2">
+            <a href="{{ url_for('edit_medicine', med_id=m.id) }}" class="btn btn-sm btn-outline-success">Edit</a>
+            <form method="POST" action="{{ url_for('delete_medicine', med_id=m.id) }}" data-confirm="Delete {{ m.name }} permanently?">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">💊</div>
+    <h5>No medicines listed yet</h5>
+    <p>List your first near-expiry medicine and recover value before it's wasted.</p>
+    <a href="{{ url_for('add_medicine') }}" class="btn btn-success mt-3">Add Medicine</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import ferr, inv %}
+{% block title %} - Become a Seller{% endblock %}
+{% block content %}
+{% set f = form or {} %}
+{% set e = errors or {} %}
+<div class="container py-4">
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+    <div class="card form-card">
+      <div class="card-body p-4">
+        <div class="auth-head">
+          <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/></svg></span>
+          <h3>Become a Seller</h3>
+          <p>Upgrade your account to sell near-expiry medicines.</p>
+        </div>
+
+        <div class="alert alert-info small">
+          Admin will call the number below to verify your pharmacy. You can list medicines once it is approved.
+          You can still buy medicines, and your cart, wishlist and orders stay as they are.
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Pharmacy / Shop Name</label>
+            <input type="text" name="shop_name" class="form-control{{ inv(e, 'shop_name') }}" maxlength="150" placeholder="e.g. Sharma Medical Store" value="{{ f.get('shop_name', '') }}" required>
+            {{ ferr(e, 'shop_name') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Contact Phone Number</label>
+            <input type="tel" name="phone" class="form-control{{ inv(e, 'phone') }}" placeholder="e.g. 98765 43210" value="{{ f.get('phone', '') }}" required>
+            {{ ferr(e, 'phone') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Shop Photo <span class="text-muted">(optional)</span></label>
+            <label for="shopPhotoInput" class="upload-box d-block">
+              <div id="uploadHint">📷 Click to upload a shop photo (PNG/JPG, max 5MB)</div>
+              <img id="imagePreview" alt="Preview">
+            </label>
+            <input type="file" id="shopPhotoInput" name="shop_photo" accept=".png,.jpg,.jpeg,.webp" class="d-none">
+            {% if form %}<p class="small text-muted mb-0 mt-1">Browsers cannot keep a chosen photo - please choose it again.</p>{% endif %}
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-success flex-fill">Upgrade to Seller</button>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+document.getElementById('shopPhotoInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  const preview = document.getElementById('imagePreview');
+  const hint = document.getElementById('uploadHint');
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      preview.src = ev.target.result;
+      preview.style.display = 'block';
+      hint.textContent = '✅ ' + file.name + ' — click to change';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+</script>
+<script>
+(function () {
+  var phone = document.querySelector('input[name="phone"]');
+  function check() {
+    var d = phone.value.replace(/\D/g, '');
+    var ok = d.length === 10 || (d.length === 12 && d.indexOf('91') === 0);
+    phone.setCustomValidity(ok ? '' : 'Please enter a 10 digit mobile number');
+  }
+  phone.addEventListener('input', check);
+  check();
+})();
+</script>
+{% endblock %}

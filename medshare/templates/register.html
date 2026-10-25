@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import ferr, inv %}
+{% block content %}
+{% set f = form or {} %}
+{% set e = errors or {} %}
+<div class="container py-4">
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card form-card">
+      <div class="card-body p-4">
+        <div class="auth-head">
+          <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5a5 5 0 0 1-7-7l7-7a5 5 0 0 1 7 7z"/><path d="M8.5 8.5l7 7"/></svg></span>
+          <h3>Create your account</h3>
+          <p>Join MedShare as a user or a pharmacy.</p>
+        </div>
+        <form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Register as</label>
+            <input type="hidden" name="role" id="roleSelect" value="{{ f.get('role') if f.get('role') in ('patient', 'seller') else 'patient' }}" required>
+            <div class="role-toggle d-flex gap-2">
+              <button type="button" class="btn role-toggle-btn active flex-fill" data-role="patient" onclick="selectRole('patient')">🧑 User<br><small class="fw-normal">Buy Medicines</small></button>
+              <button type="button" class="btn role-toggle-btn flex-fill" data-role="seller" onclick="selectRole('seller')">🏥 Seller / Pharmacy<br><small class="fw-normal">Sell Medicines</small></button>
+            </div>
+            {{ ferr(e, 'role') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Full Name</label>
+            <input type="text" name="name" class="form-control{{ inv(e, 'name') }}" value="{{ f.get('name', '') }}" required>
+            {{ ferr(e, 'name') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control{{ inv(e, 'email') }}" value="{{ f.get('email', '') }}" required>
+            {{ ferr(e, 'email') }}
+          </div>
+          {% if form %}<p class="small text-muted mb-2">🔒 For your safety the password boxes are cleared - please type them again. Everything else is kept.</p>{% endif %}
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" name="password" id="passwordInput" class="form-control{{ inv(e, 'password') }}" minlength="6" required>
+            {{ ferr(e, 'password') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Confirm Password</label>
+            <input type="password" name="confirm_password" id="confirmPasswordInput" class="form-control{{ inv(e, 'confirm_password') }}" minlength="6" required>
+            {{ ferr(e, 'confirm_password') }}
+            <p class="small text-danger mb-0 mt-1" id="passwordMismatch" style="display:none;">Passwords do not match</p>
+          </div>
+          <div class="mb-3" id="shopNameField" style="display:none;">
+            <label class="form-label">Pharmacy / Shop Name</label>
+            <input type="text" name="shop_name" class="form-control{{ inv(e, 'shop_name') }}" placeholder="e.g. Sharma Medical Store" value="{{ f.get('shop_name', '') }}">
+            {{ ferr(e, 'shop_name') }}
+          </div>
+          <div class="mb-3" id="shopPhoneField" style="display:none;">
+            <label class="form-label">Contact Phone Number</label>
+            <input type="tel" name="phone" class="form-control{{ inv(e, 'phone') }}" placeholder="e.g. 98765 43210" value="{{ f.get('phone', '') }}">
+            {{ ferr(e, 'phone') }}
+            <p class="small text-muted mb-0 mt-1">Admin may call this number to verify your pharmacy before approval.</p>
+          </div>
+          <div class="mb-3" id="shopPhotoField" style="display:none;">
+            <label class="form-label">Shop Photo <span class="text-muted">(optional)</span></label>
+            <label for="shopPhotoInput" class="upload-box d-block">
+              <div id="uploadHint">📷 Click to upload a shop photo (PNG/JPG, max 5MB)</div>
+              <img id="imagePreview" alt="Preview">
+            </label>
+            <input type="file" id="shopPhotoInput" name="shop_photo" accept=".png,.jpg,.jpeg,.webp" class="d-none">
+            {% if form %}<p class="small text-muted mb-0 mt-1">Browsers cannot keep a chosen photo - please choose it again.</p>{% endif %}
+          </div>
+          <button class="btn btn-success w-100">Register</button>
+        </form>
+        <p class="mt-3 text-center">Already have an account? <a href="{{ url_for('login') }}">Login</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const roleSelect = document.getElementById('roleSelect');
+const shopField = document.getElementById('shopNameField');
+const shopPhoneField = document.getElementById('shopPhoneField');
+const shopPhotoField = document.getElementById('shopPhotoField');
+const phoneInput = document.querySelector('input[name="phone"]');
+function validatePhone() {
+  if (roleSelect.value !== 'seller') { phoneInput.setCustomValidity(''); return; }
+  const d = phoneInput.value.replace(/\D/g, '');
+  const ok = d.length === 10 || (d.length === 12 && d.indexOf('91') === 0);
+  phoneInput.setCustomValidity(ok ? '' : (d.length === 0 ? 'Please enter a 10 digit mobile number' : 'Phone number must be exactly 10 digits - you entered ' + d.length));
+}
+phoneInput.addEventListener('input', validatePhone);
+function toggleShopField() {
+  const isSeller = roleSelect.value === 'seller';
+  shopField.style.display = isSeller ? 'block' : 'none';
+  shopPhoneField.style.display = isSeller ? 'block' : 'none';
+  shopPhotoField.style.display = isSeller ? 'block' : 'none';
+  validatePhone();
+}
+function selectRole(role) {
+  roleSelect.value = role;
+  document.querySelectorAll('.role-toggle-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.role === role);
+  });
+  toggleShopField();
+}
+selectRole(roleSelect.value);
+
+document.getElementById('shopPhotoInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  const preview = document.getElementById('imagePreview');
+  const hint = document.getElementById('uploadHint');
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      preview.src = ev.target.result;
+      preview.style.display = 'block';
+      hint.textContent = '✅ ' + file.name + ' — click to change';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+const passwordInput = document.getElementById('passwordInput');
+const confirmPasswordInput = document.getElementById('confirmPasswordInput');
+const mismatchWarning = document.getElementById('passwordMismatch');
+const registerForm = passwordInput.closest('form');
+
+function checkPasswordMatch() {
+  const mismatch = confirmPasswordInput.value.length > 0 && passwordInput.value !== confirmPasswordInput.value;
+  mismatchWarning.style.display = mismatch ? 'block' : 'none';
+  confirmPasswordInput.classList.toggle('is-invalid', mismatch);
+}
+passwordInput.addEventListener('input', checkPasswordMatch);
+confirmPasswordInput.addEventListener('input', checkPasswordMatch);
+
+registerForm.addEventListener('submit', function(e) {
+  if (passwordInput.value !== confirmPasswordInput.value) {
+    e.preventDefault();
+    mismatchWarning.style.display = 'block';
+    confirmPasswordInput.classList.add('is-invalid');
+    confirmPasswordInput.focus();
+  }
+});
+</script>
+{% endblock %}

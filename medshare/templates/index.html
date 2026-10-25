@@ -1,0 +1,300 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import med_card %}
+{% from '_pagination.html' import render_pager %}
+{% block content %}
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero fade-in-up">
+    <div class="hero-grid">
+      <div>
+        <span class="hero-badge">🌱 Reducing Medicine Wastage, One Sale at a Time</span>
+        <h1>Save on Medicines.<br><em>Before They Expire.</em></h1>
+        <p class="lead">MedShare connects people with near-expiry medicines at genuine discounts — helping pharmacies clear stock before it expires, and helping people save money.</p>
+        <form method="get" action="{{ url_for('index') }}#browse" class="hero-search">
+          <input type="text" name="search" class="form-control" placeholder="Search medicine or generic name..." value="{{ request.args.get('search','') }}">
+          <button class="btn btn-hero" type="submit">Search</button>
+        </form>
+        <div class="hero-quick">
+          <span>Popular:</span>
+          <a href="{{ url_for('index', category='Tablet') }}#browse">Tablets</a>
+          <a href="{{ url_for('index', category='Syrup') }}#browse">Syrups</a>
+          <a href="{{ url_for('index', category='Injection') }}#browse">Injections</a>
+        </div>
+      </div>
+      <div class="hero-visual d-none d-lg-block" aria-hidden="true">
+        <div class="deal-float deal-main">
+          <span class="tag">Example deal</span>
+          <div class="pill-ico">💊</div>
+          <h4>Paracetamol 500mg</h4>
+          <div class="sub">Strip of 15 tablets</div>
+          <div class="price-row">
+            <span class="now">₹60</span><span class="was">₹100</span><span class="off">40% OFF</span>
+          </div>
+          <div class="deal-bar"><span></span></div>
+          <div class="deal-bar-label"><span>Fresh stock</span><span>Expires in 45 days</span></div>
+        </div>
+        <div class="deal-float deal-chip one">
+          <span class="ico">✅</span><span>Seller verified<small>Checked by admin</small></span>
+        </div>
+        <div class="deal-float deal-chip two">
+          <span class="ico">🔒</span><span>Price locked<small>At the time of order</small></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRUST STRIP -->
+  <div class="trust-strip reveal">
+    <div class="trust-item"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></span><span>Verified sellers<small>Admin approves every pharmacy</small></span></div>
+    <div class="trust-item"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span><span>Expiry checked<small>Expired stock never shows</small></span></div>
+    <div class="trust-item"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg></span><span>Real discounts<small>Price saved at order time</small></span></div>
+    <div class="trust-item"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span><span>Order tracking<small>Pending to delivered</small></span></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-section">
+    <div class="row g-3 g-lg-4">
+      <div class="col-6 col-lg-3">
+        <div class="stat-card reveal">
+          <div class="stat-icon" style="background:var(--emerald-50);">👥</div>
+          <div><div class="stat-number" data-count="{{ stats.users }}">{{ stats.users }}+</div>
+          <div class="stat-label">Registered Users</div></div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-card reveal">
+          <div class="stat-icon" style="background:#f0fdfa;">💊</div>
+          <div><div class="stat-number" data-count="{{ stats.medicines }}">{{ stats.medicines }}+</div>
+          <div class="stat-label">Medicines Listed</div></div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-card reveal">
+          <div class="stat-icon" style="background:#f0f9ff;">🛍️</div>
+          <div><div class="stat-number" data-count="{{ stats.orders }}">{{ stats.orders }}+</div>
+          <div class="stat-label">Orders Completed</div></div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-card reveal">
+          <div class="stat-icon" style="background:#fff1f2;">⏳</div>
+          <div><div class="stat-number" data-count="{{ stats.medicines }}">{{ stats.medicines }}+</div>
+          <div class="stat-label">Deals Before Expiry</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURED MEDICINES -->
+  {% if featured %}
+  <div class="mt-5">
+    <p class="section-eyebrow">Top Deals</p>
+    <h2 class="section-title">Featured Discounted Medicines</h2>
+    <p class="section-sub">Handpicked deals with the biggest savings</p>
+    <div class="row">
+      {% for m in featured %}
+      <div class="col-md-4 mb-4 reveal">
+        {{ med_card(m, show_seller=True) }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- PHARMACIES -->
+  {% if pharmacies %}
+  <div class="mt-5">
+    <p class="section-eyebrow">Verified Pharmacies</p>
+    <h2 class="section-title">Browse by Pharmacy</h2>
+    <p class="section-sub">Click a pharmacy to see everything they currently have in stock</p>
+    <div class="row">
+      {% for p in pharmacies %}
+      <div class="col-md-3 col-6 mb-4">
+        <a href="{{ url_for('pharmacy_medicines', seller_id=p.seller.id) }}" class="text-decoration-none">
+          <div class="role-card text-center h-100">
+            {% if p.seller.shop_photo %}
+            <img src="{{ url_for('media', filename=p.seller.shop_photo) }}" class="mx-auto d-block" style="width:56px; height:56px; object-fit:cover; border-radius:14px;" alt="{{ p.seller.display_name }}">
+            {% else %}
+            <div class="role-icon mx-auto" style="background:var(--emerald-50); width:56px; height:56px; font-size:1.8rem;">🏪</div>
+            {% endif %}
+            <h6 class="fw-bold mt-2 mb-1" style="color:var(--gray-900);">{{ p.seller.display_name }}</h6>
+            <p class="small text-muted mb-0">{{ p.count }} medicine{{ 's' if p.count != 1 else '' }} available</p>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- HOW IT WORKS -->
+  <div class="mt-5 text-center">
+    <p class="section-eyebrow">Simple Process</p>
+    <h2 class="section-title">How MedShare Works</h2>
+    <p class="section-sub">From listing to delivery, in four simple steps</p>
+    <div class="row">
+      <div class="col-md-3 mb-3 mb-md-0">
+        <div class="step-card reveal">
+          <div class="step-number">1</div>
+          <div class="step-title">List or Browse</div>
+          <div class="step-desc">Sellers list near-expiry medicines. Users browse & search discounted stock.</div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3 mb-md-0">
+        <div class="step-card reveal">
+          <div class="step-number">2</div>
+          <div class="step-title">Admin Verifies</div>
+          <div class="step-desc">Every seller & listing is verified by admin before going live.</div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3 mb-md-0">
+        <div class="step-card reveal">
+          <div class="step-number">3</div>
+          <div class="step-title">Order at a Discount</div>
+          <div class="step-desc">Choose the medicine you need and place your order at the discounted price.</div>
+        </div>
+      </div>
+      <div class="col-md-3 mb-3 mb-md-0">
+        <div class="step-card reveal">
+          <div class="step-number">4</div>
+          <div class="step-title">Track & Receive</div>
+          <div class="step-desc">Sellers update order status until it's delivered to you.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROLES -->
+  <div class="mt-5 text-center">
+    <p class="section-eyebrow">Who Can Join</p>
+    <h2 class="section-title">Built for Everyone in the Chain</h2>
+    <p class="section-sub">Different roles, one shared goal — less wastage, more access</p>
+    <div class="row g-3 justify-content-center">
+      <div class="col-md-4">
+        <div class="role-card text-start reveal">
+          <div class="role-icon" style="background:var(--emerald-50);">🧑‍⚕️</div>
+          <h6 class="fw-bold">User</h6>
+          <p class="small text-muted mb-0">Buy genuine medicines at a discount before they expire.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="role-card text-start reveal">
+          <div class="role-icon" style="background:#f0fdfa;">🏪</div>
+          <h6 class="fw-bold">Seller / Pharmacy</h6>
+          <p class="small text-muted mb-0">List near-expiry stock and recover value before it's wasted.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="role-card text-start reveal">
+          <div class="role-icon" style="background:#f5f3ff;">🛡️</div>
+          <h6 class="fw-bold">Admin</h6>
+          <p class="small text-muted mb-0">Verifies every seller and listing to keep the platform trustworthy.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BROWSE / SEARCH -->
+  <div class="mt-5" id="browse">
+    <p class="section-eyebrow">Marketplace</p>
+    <h2 class="section-title">Browse Discounted Medicines</h2>
+
+    <form method="get" action="{{ url_for('index') }}#browse" class="filter-bar mb-3">
+      <input type="text" name="search" class="form-control" style="max-width:340px; flex:1; min-width:200px;" placeholder="Search by name or generic name..." value="{{ request.args.get('search','') }}">
+      <select name="category" class="form-select" style="max-width:180px;">
+        <option value="">All Categories</option>
+        <option value="Tablet" {% if request.args.get('category')=='Tablet' %}selected{% endif %}>Tablet</option>
+        <option value="Syrup" {% if request.args.get('category')=='Syrup' %}selected{% endif %}>Syrup</option>
+        <option value="Injection" {% if request.args.get('category')=='Injection' %}selected{% endif %}>Injection</option>
+        <option value="Ointment" {% if request.args.get('category')=='Ointment' %}selected{% endif %}>Ointment</option>
+        <option value="Other" {% if request.args.get('category')=='Other' %}selected{% endif %}>Other</option>
+      </select>
+      <button class="btn btn-success">Search</button>
+    </form>
+
+    <div class="category-strip mb-4">
+      <a href="{{ url_for('index') }}#browse" class="category-pill {% if not request.args.get('category') %}active{% endif %}">
+        <span class="icon">🔎</span><span class="label">All</span>
+      </a>
+      <a href="{{ url_for('index', category='Tablet') }}#browse" class="category-pill {% if request.args.get('category')=='Tablet' %}active{% endif %}">
+        <span class="icon">💊</span><span class="label">Tablet</span>
+      </a>
+      <a href="{{ url_for('index', category='Syrup') }}#browse" class="category-pill {% if request.args.get('category')=='Syrup' %}active{% endif %}">
+        <span class="icon">🧴</span><span class="label">Syrup</span>
+      </a>
+      <a href="{{ url_for('index', category='Injection') }}#browse" class="category-pill {% if request.args.get('category')=='Injection' %}active{% endif %}">
+        <span class="icon">💉</span><span class="label">Injection</span>
+      </a>
+      <a href="{{ url_for('index', category='Ointment') }}#browse" class="category-pill {% if request.args.get('category')=='Ointment' %}active{% endif %}">
+        <span class="icon">🧪</span><span class="label">Ointment</span>
+      </a>
+      <a href="{{ url_for('index', category='Other') }}#browse" class="category-pill {% if request.args.get('category')=='Other' %}active{% endif %}">
+        <span class="icon">📦</span><span class="label">Other</span>
+      </a>
+    </div>
+
+    <div class="row">
+      {% for m in medicines %}
+      <div class="col-md-4 mb-4">
+        {{ med_card(m, show_seller=True) }}
+      </div>
+      {% else %}
+      <div class="col-12">
+        <div class="empty-state">
+          <div class="icon">🔍💊</div>
+          <h5>No Medicines Found</h5>
+          <p>Try a different search term or check back later for new deals.</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {{ render_pager(pager, 'index', request.args, 'browse') }}
+  </div>
+
+</div>
+
+<style>#browse { scroll-margin-top: 90px; } /* sticky navbar ke neeche heading na chhupe */</style>
+<script>
+/* Category / search click pe poora page reload nahi hota - sirf "Browse" wala hissa badalta hai
+   aur smooth scroll hoke wahin pahunchta hai. JS band ho toh normal links (#browse) hi chalte hain. */
+(function () {
+  var browse = document.getElementById('browse');
+  if (!browse || !window.fetch || !window.DOMParser || !window.URL || !history.pushState) { return; }
+
+  function load(url) {
+    fetch(url, { credentials: 'same-origin' })
+      .then(function (r) { if (!r.ok) { throw new Error('bad status'); } return r.text(); })
+      .then(function (html) {
+        var fresh = new DOMParser().parseFromString(html, 'text/html').getElementById('browse');
+        if (!fresh) { throw new Error('no browse section'); }
+        browse.innerHTML = fresh.innerHTML;
+        history.pushState(null, '', url + '#browse');
+        browse.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      })
+      .catch(function () { window.location.href = url + '#browse'; });
+  }
+
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest ? e.target.closest('a') : null;
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) { return; }
+    var u = new URL(a.href, window.location.href);
+    if (u.origin !== window.location.origin || u.pathname !== window.location.pathname || u.hash !== '#browse') { return; }
+    e.preventDefault();
+    load(u.pathname + u.search);
+  });
+
+  document.addEventListener('submit', function (e) {
+    var f = e.target;
+    if (!f.method || f.method.toLowerCase() !== 'get') { return; }
+    var u = new URL(f.action, window.location.href);
+    if (u.pathname !== window.location.pathname || u.hash !== '#browse') { return; }
+    e.preventDefault();
+    load(u.pathname + '?' + new URLSearchParams(new FormData(f)).toString());
+  });
+
+  window.addEventListener('popstate', function () { window.location.reload(); });
+})();
+</script>
+{% endblock %}

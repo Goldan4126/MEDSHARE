@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import ferr, inv %}
+{% block content %}
+{% set f = form or {} %}
+{% set e = errors or {} %}
+{% set is_own = current_user and current_user.id == medicine.seller_id %}
+{% set can_order = medicine.is_available and not is_own and (not current_user or current_user.role in ['patient', 'seller']) %}
+{% set can_wishlist = medicine.status == 'approved' and not is_own and (not current_user or current_user.role in ['patient', 'seller']) %}
+<div class="container py-4">
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card form-card">
+      {% if medicine.image_filename %}
+      <img src="{{ url_for('media', filename=medicine.image_filename) }}" class="med-card-img" style="height:220px;" alt="{{ medicine.name }}">
+      {% else %}
+      <div class="med-card-img-placeholder" style="height:220px; font-size:3.5rem;">💊</div>
+      {% endif %}
+      <div class="card-body p-4">
+        <h3>{{ medicine.name }}
+          {% if medicine.category %}<span class="badge badge-category">{{ medicine.category }}</span>{% endif %}
+        </h3>
+        {% if medicine.generic_name %}<p class="generic-name">Generic: {{ medicine.generic_name }}</p>{% endif %}
+        <p><span class="text-decoration-line-through text-muted">₹{{ medicine.original_price }}</span>
+           <span class="fw-bold text-success ms-2">₹{{ medicine.discounted_price }}</span>
+           <span class="badge bg-danger ms-1">{{ medicine.discount_percent }}% OFF</span></p>
+        <p>Expiry Date: {{ medicine.expiry_date }}
+          {% if medicine.is_expired %}<span class="badge bg-dark ms-1">Expired</span>
+          {% elif medicine.days_to_expiry <= 7 %}<span class="badge bg-danger ms-1">⚠️ Only {{ medicine.days_to_expiry }} days left!</span>
+          {% elif medicine.days_to_expiry <= 30 %}<span class="badge bg-warning text-dark ms-1">⏳ {{ medicine.days_to_expiry }} days left</span>
+          {% endif %}
+        </p>
+        <p>Available Quantity: {{ medicine.quantity }}</p>
+        <p>Sold by: <a href="{{ url_for('pharmacy_medicines', seller_id=medicine.seller.id) }}">{{ medicine.seller.display_name }}</a>
+          {% if medicine.seller.avg_rating %}<span class="small text-muted">⭐ {{ medicine.seller.avg_rating }} ({{ medicine.seller.review_count }})</span>{% endif %}
+        </p>
+
+        {% if medicine.status != 'approved' %}
+        <div class="alert alert-warning mb-0">This listing is <strong>{{ medicine.status }}</strong> and is not visible to customers.</div>
+        {% elif not medicine.is_available %}
+        <div class="alert alert-secondary mb-2"><strong>{{ medicine.unavailable_reason }}</strong> — this medicine can't be ordered right now.</div>
+        {% elif is_own %}
+        <div class="alert alert-info mb-0">This is your own listing, so you can't order it.</div>
+        {% elif current_user and current_user.role == 'admin' %}
+        <div class="alert alert-info mb-0">Admin accounts can't place orders.</div>
+        {% endif %}
+        {% if can_order %}
+        <form method="POST" action="{{ url_for('place_order', med_id=medicine.id) }}" id="orderForm">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Quantity</label>
+            <input type="number" name="quantity" min="1" max="{{ medicine.quantity }}" value="{{ f.get('quantity', 1) }}" class="form-control{{ inv(e, 'quantity') }}" required>
+            {{ ferr(e, 'quantity') }}
+          </div>
+          <div class="mb-3" id="addressSection" data-open="{{ '1' if form else '' }}" style="display:{{ 'block' if form else 'none' }};">
+            <label class="form-label">Delivery Address</label>
+            <input type="text" name="address_pincode" id="pincodeInput" class="form-control mb-2{{ inv(e, 'address_pincode') }}" placeholder="Pincode" pattern="[0-9]{6}" maxlength="6" title="6 digit pincode" value="{{ f.get('address_pincode', '') }}">
+            {{ ferr(e, 'address_pincode') }}
+      <p class="small mb-2" id="pincodeStatus"></p>
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <input type="text" name="address_district" id="districtInput" class="form-control{{ inv(e, 'address_district') }}" placeholder="District" value="{{ f.get('address_district', '') }}">
+              </div>
+              <div class="col-6">
+                <input type="text" name="address_city" id="cityInput" class="form-control{{ inv(e, 'address_city') }}" placeholder="City" value="{{ f.get('address_city', '') }}">
+              </div>
+            </div>
+            <select name="address_state" id="stateInput" class="form-select mb-2{{ inv(e, 'address_state') }}" data-selected="{{ f.get('address_state', '') }}">
+              <option value="" disabled selected>Select State</option>
+              <option>Andhra Pradesh</option>
+              <option>Arunachal Pradesh</option>
+              <option>Assam</option>
+              <option>Bihar</option>
+              <option>Chhattisgarh</option>
+              <option>Goa</option>
+              <option>Gujarat</option>
+              <option>Haryana</option>
+              <option>Himachal Pradesh</option>
+              <option>Jharkhand</option>
+              <option>Karnataka</option>
+              <option>Kerala</option>
+              <option>Madhya Pradesh</option>
+              <option>Maharashtra</option>
+              <option>Manipur</option>
+              <option>Meghalaya</option>
+              <option>Mizoram</option>
+              <option>Nagaland</option>
+              <option>Odisha</option>
+              <option>Punjab</option>
+              <option>Rajasthan</option>
+              <option>Sikkim</option>
+              <option>Tamil Nadu</option>
+              <option>Telangana</option>
+              <option>Tripura</option>
+              <option>Uttar Pradesh</option>
+              <option>Uttarakhand</option>
+              <option>West Bengal</option>
+              <option>Andaman and Nicobar Islands</option>
+              <option>Chandigarh</option>
+              <option>Dadra and Nagar Haveli and Daman and Diu</option>
+              <option>Delhi</option>
+              <option>Jammu and Kashmir</option>
+              <option>Ladakh</option>
+              <option>Lakshadweep</option>
+              <option>Puducherry</option>
+            </select>
+            <input type="text" name="address_line" class="form-control mb-2{{ inv(e, 'address_line') }}" placeholder="House no, street, area" value="{{ f.get('address_line', '') }}">
+            <input type="tel" name="address_phone" class="form-control mb-3{{ inv(e, 'address_phone') }}" placeholder="Contact Phone Number" value="{{ f.get('address_phone', '') }}" pattern="[0-9]{10}" maxlength="10" title="10 digit phone number">
+            {{ ferr(e, 'address_district') }}{{ ferr(e, 'address_city') }}{{ ferr(e, 'address_state') }}{{ ferr(e, 'address_line') }}{{ ferr(e, 'address_phone') }}
+            {% include '_payment_choice.html' %}
+          </div>
+          <button type="button" class="btn btn-success w-100" id="placeOrderBtn">Place Order</button>
+          <button class="btn btn-success w-100" type="submit" id="confirmOrderBtn" style="display:none;">Confirm Order</button>
+        </form>
+        <form method="POST" action="{{ url_for('add_to_cart', med_id=medicine.id) }}" class="mt-2">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="quantity" value="1">
+          <button type="submit" class="btn btn-outline-success w-100">🛒 Add to Cart</button>
+        </form>
+        {% endif %}
+        {% if can_wishlist %}
+        <form method="POST" action="{{ url_for('toggle_wishlist', med_id=medicine.id) }}" class="mt-2">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-outline-secondary w-100">
+            {% if medicine.id in wishlist_ids %}🔖 Remove from Wishlist{% else %}🔖 Save to Wishlist{% endif %}
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- REVIEWS (delivered orders ke buyers ka feedback) -->
+    <div class="mt-4" id="reviews">
+      <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+        <div>
+          <p class="section-eyebrow mb-1">Buyer feedback</p>
+          <h5 class="mb-0" style="font-weight:700;">Customer Reviews</h5>
+        </div>
+        {% if avg_rating %}
+        <div class="text-end">
+          <span class="fw-bold fs-4">{{ avg_rating }}</span><span class="text-muted">/5</span>
+          <div class="small text-muted">{{ review_count }} review{{ 's' if review_count != 1 else '' }}</div>
+        </div>
+        {% endif %}
+      </div>
+      {% for r in reviews %}
+      <div class="card form-card mb-3" {% if r.hidden %}style="opacity:.55;"{% endif %}>
+        <div class="card-body" style="padding:18px 20px !important;">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+              <strong>{{ r.user.name }}</strong>
+              <span class="badge badge-category ms-1">✓ Verified buyer</span>
+              {% if r.hidden %}<span class="badge bg-danger ms-1">Removed</span>{% endif %}
+            </div>
+            <span class="text-warning" title="{{ r.rating }} out of 5">{{ '⭐' * r.rating }}</span>
+          </div>
+          <p class="small text-muted mb-2">{{ r.created_at|ist('%d-%m-%Y') }}</p>
+          <p class="mb-0">{{ r.message }}</p>
+          {% if current_user and current_user.role == 'admin' %}
+          <form method="POST" action="{{ url_for('toggle_feedback', fb_id=r.id) }}" class="mt-2">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm {{ 'btn-outline-success' if r.hidden else 'btn-outline-danger' }}">{{ 'Restore review' if r.hidden else 'Remove review' }}</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:32px 20px;">
+        <div class="icon" style="font-size:2rem;">⭐</div>
+        <h5>No reviews yet</h5>
+        <p>Buyers can review this medicine once their order is delivered.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+</div>
+
+{% if can_order %}
+<script>
+const addressSection = document.getElementById('addressSection');
+const placeOrderBtn = document.getElementById('placeOrderBtn');
+const confirmOrderBtn = document.getElementById('confirmOrderBtn');
+const addressInputs = addressSection.querySelectorAll('input, select');
+const pincodeInput = document.getElementById('pincodeInput');
+const districtInput = document.getElementById('districtInput');
+const cityInput = document.getElementById('cityInput');
+const stateInput = document.getElementById('stateInput');
+const pincodeStatus = document.getElementById('pincodeStatus');
+
+placeOrderBtn.addEventListener('click', function() {
+  addressSection.style.display = 'block';
+  addressInputs.forEach(function(input) { input.required = true; });
+  placeOrderBtn.style.display = 'none';
+  confirmOrderBtn.style.display = 'block';
+  pincodeInput.focus();
+});
+
+pincodeInput.addEventListener('input', function() {
+  const pin = pincodeInput.value.trim();
+  if (pin.length !== 6 || !/^[0-9]{6}$/.test(pin)) {
+    pincodeStatus.textContent = '';
+    return;
+  }
+  pincodeStatus.textContent = 'Looking up pincode...';
+  pincodeStatus.className = 'small mb-2 text-muted';
+
+  fetch('https://api.postalpincode.in/pincode/' + pin)
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      const result = data && data[0];
+      if (result && result.Status === 'Success' && result.PostOffice && result.PostOffice.length) {
+        const office = result.PostOffice[0];
+        districtInput.value = office.District || '';
+        cityInput.value = office.Block && office.Block !== 'NA' ? office.Block : office.District || '';
+        stateInput.value = office.State || '';
+        pincodeStatus.textContent = '✅ Location found — please verify before ordering';
+        pincodeStatus.className = 'small mb-2 text-success';
+      } else {
+        pincodeStatus.textContent = 'Could not find this pincode. Please fill District/City/State manually.';
+        pincodeStatus.className = 'small mb-2 text-warning';
+      }
+    })
+    .catch(function() {
+      pincodeStatus.textContent = 'Could not reach lookup service. Please fill District/City/State manually.';
+      pincodeStatus.className = 'small mb-2 text-warning';
+    });
+});
+
+if (stateInput.dataset.selected) { stateInput.value = stateInput.dataset.selected; }
+if (addressSection.dataset.open) { placeOrderBtn.click(); }
+
+document.getElementById('orderForm').addEventListener('submit', function() {
+  confirmOrderBtn.classList.add('btn-validating');
+  confirmOrderBtn.innerHTML = '<span class="spinner-inline"></span>Validating stock...';
+});
+</script>
+{% endif %}
+{% endblock %}

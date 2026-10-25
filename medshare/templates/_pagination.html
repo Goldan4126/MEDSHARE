@@ -1,0 +1,33 @@
+{# Page numbers: render_pager(pager, 'endpoint', request.args, 'anchor-id (optional)') #}
+{% macro render_pager(p, endpoint, args, anchor=none) %}
+{% if p.pages > 1 %}
+{% set base = args.to_dict() %}
+{% set lo = [1, p.page - 2]|max %}
+{% set hi = [p.pages, p.page + 2]|min %}
+<nav aria-label="Pages" class="mt-2">
+  <ul class="pagination pagination-sm justify-content-center flex-wrap mb-0">
+    {% if p.page > 1 %}
+    <li class="page-item"><a class="page-link" href="{{ url_for(endpoint, _anchor=anchor, **dict(base, page=p.page - 1)) }}">&lsaquo; Prev</a></li>
+    {% else %}
+    <li class="page-item disabled"><span class="page-link">&lsaquo; Prev</span></li>
+    {% endif %}
+    {% if lo > 1 %}
+    <li class="page-item"><a class="page-link" href="{{ url_for(endpoint, _anchor=anchor, **dict(base, page=1)) }}">1</a></li>
+    {% if lo > 2 %}<li class="page-item disabled"><span class="page-link">&hellip;</span></li>{% endif %}
+    {% endif %}
+    {% for n in range(lo, hi + 1) %}
+    <li class="page-item {{ 'active' if n == p.page else '' }}"><a class="page-link" href="{{ url_for(endpoint, _anchor=anchor, **dict(base, page=n)) }}">{{ n }}</a></li>
+    {% endfor %}
+    {% if hi < p.pages %}
+    {% if hi < p.pages - 1 %}<li class="page-item disabled"><span class="page-link">&hellip;</span></li>{% endif %}
+    <li class="page-item"><a class="page-link" href="{{ url_for(endpoint, _anchor=anchor, **dict(base, page=p.pages)) }}">{{ p.pages }}</a></li>
+    {% endif %}
+    {% if p.page < p.pages %}
+    <li class="page-item"><a class="page-link" href="{{ url_for(endpoint, _anchor=anchor, **dict(base, page=p.page + 1)) }}">Next &rsaquo;</a></li>
+    {% else %}
+    <li class="page-item disabled"><span class="page-link">Next &rsaquo;</span></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endmacro %}

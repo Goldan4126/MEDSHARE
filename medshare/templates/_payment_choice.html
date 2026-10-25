@@ -1,0 +1,14 @@
+{% set f = form or {} %}
+{% set e = errors or {} %}
+<div class="mb-3">
+  <label class="form-label fw-semibold">Payment method</label>
+  <div class="form-check">
+    <input class="form-check-input" type="radio" name="payment_method" id="payCod" value="COD" {% if f.get('payment_method', 'COD') != 'Online' %}checked{% endif %}>
+    <label class="form-check-label" for="payCod">💵 Cash on Delivery</label>
+  </div>
+  <div class="form-check">
+    <input class="form-check-input" type="radio" name="payment_method" id="payOnline" value="Online" {% if f.get('payment_method') == 'Online' and payments_enabled %}checked{% endif %} {% if not payments_enabled %}disabled{% endif %}>
+    <label class="form-check-label" for="payOnline">💳 Pay Online (UPI / Card / Netbanking){% if not payments_enabled %} <span class="small text-muted">— not available right now</span>{% endif %}</label>
+  </div>
+  {% if e.get('payment_method') %}<div class="field-error" role="alert">⚠ {{ e.get('payment_method') }}</div>{% endif %}
+</div>

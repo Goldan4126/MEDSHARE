@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import ferr, inv %}
+{% block content %}
+{% set f = form or {} %}
+{% set e = errors or {} %}
+<div class="container py-4">
+
+{% if default_admin_password %}
+<div class="alert alert-danger">
+  ⚠️ <strong>Admin password abhi default (<code>admin123</code>) hai.</strong>
+  Deploy karne se pehle <code>ADMIN_PASSWORD</code> environment variable set karke database reset karo (README dekho).
+</div>
+{% endif %}
+
+<h3 class="mb-3">Pending Seller Verification</h3>
+<table class="table table-bordered bg-white mb-5">
+  <thead>
+    <tr><th>Owner Name</th><th>Shop Name</th><th>Phone</th><th>Email</th><th>Role</th><th>Action</th></tr>
+  </thead>
+  <tbody>
+    {% for u in unverified_users %}
+    <tr>
+      <td>{{ u.name }}</td>
+      <td>{{ u.shop_name or '—' }}</td>
+      <td>
+        {% if u.phone %}<a href="tel:{{ u.phone }}">📞 {{ u.phone }}</a>{% else %}—{% endif %}
+      </td>
+      <td>{{ u.email }}</td>
+      <td>{{ u.role }}</td>
+      <td>
+        <div class="d-flex flex-wrap gap-2 align-items-start">
+          <form method="POST" action="{{ url_for('verify_user', user_id=u.id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-success">Approve</button>
+          </form>
+          <form method="POST" action="{{ url_for('reject_user', user_id=u.id) }}" class="d-flex gap-2" data-confirm="Reject {{ u.display_name }}? They can correct their details and apply again.">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="text" name="reason" class="form-control form-control-sm" maxlength="200" placeholder="Reason for rejection" style="min-width:170px;" required>
+            <button class="btn btn-sm btn-danger">Reject</button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="text-center text-muted">No pending verifications.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3 class="mb-3">Admin Dashboard - Pending Approvals</h3>
+<table class="table table-bordered bg-white">
+  <thead>
+    <tr><th>Photo</th><th>Medicine</th><th>Seller</th><th>Discount</th><th>Expiry</th><th>Qty</th><th>Action</th></tr>
+  </thead>
+  <tbody>
+    {% for m in pending %}
+    <tr>
+      <td>
+        {% if m.image_filename %}
+        <img src="{{ url_for('media', filename=m.image_filename) }}" style="width:50px; height:50px; object-fit:cover; border-radius:8px;" alt="{{ m.name }}">
+        {% else %}
+        <span style="font-size:1.5rem;">💊</span>
+        {% endif %}
+      </td>
+      <td>{{ m.name }}</td>
+      <td>{{ m.seller.display_name }}</td>
+      <td>{{ m.discount_percent }}%</td>
+      <td>{{ m.expiry_date }}</td>
+      <td>{{ m.quantity }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('review_medicine', med_id=m.id, action='approve') }}" class="d-inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-success">Approve</button>
+        </form>
+        <form method="POST" action="{{ url_for('review_medicine', med_id=m.id, action='reject') }}" class="d-inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-danger">Reject</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="text-center text-muted">No pending listings.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3 class="mb-3 mt-5">Pending Refunds</h3>
+<p class="small text-muted">Online payment ke baad cancel hue orders. Check karke <strong>Refund</strong> dabao - paisa Razorpay se user ke usi UPI/card mein wapas chala jaata hai.</p>
+<table class="table table-bordered bg-white">
+  <thead>
+    <tr><th>Order</th><th>User</th><th>Medicine</th><th>Amount</th><th>Payment ID</th><th>Reason</th><th>Action</th></tr>
+  </thead>
+  <tbody>
+    {% for o in refunds %}
+    <tr>
+      <td>#{{ o.id }}</td>
+      <td>{{ o.user.name }}<br><span class="small text-muted">{{ o.user.email }}</span></td>
+      <td>{{ o.medicine.name }} <span class="small text-muted">x{{ o.quantity }}</span></td>
+      <td>₹{{ o.line_total }}</td>
+      <td class="small"><code>{{ o.razorpay_payment_id }}</code></td>
+      <td class="small">{{ o.cancel_note or 'Cancelled by user' }}</td>
+      <td>
+        {% if o.payment_status == 'Refund Pending' %}
+        <form method="POST" action="{{ url_for('admin_refund_order', order_id=o.id) }}" data-confirm="Refund ₹{{ o.line_total }} to {{ o.user.name }}?">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-success">Refund ₹{{ o.line_total }}</button>
+        </form>
+        {% else %}
+        <span class="badge bg-secondary">Refund in progress</span>
+        <div class="small text-muted">Agar atka rahe toh Razorpay dashboard check karo.</div>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="text-center text-muted">No pending refunds.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3 class="mb-3 mt-5">Seller Payouts</h3>
+<p class="small text-muted">Sirf <strong>Delivered + online paid</strong> orders. <strong>{{ commission_percent }}% commission pehle se kata hua hai</strong> - "Net to pay" wahi amount hai jo seller ke UPI pe bhejna hai. Pehle UPI app se paisa bhejo, phir <strong>Payout done</strong> dabao.</p>
+<div class="table-responsive">
+<table class="table table-bordered bg-white">
+  <thead>
+    <tr><th>Seller</th><th>UPI ID / QR</th><th>Orders</th><th>Sales</th><th>Commission ({{ commission_percent }}%)</th><th>Net to pay</th><th>Action</th></tr>
+  </thead>
+  <tbody>
+    {% for d in payouts_due %}
+    <tr>
+      <td>{{ d.seller.display_name }}<br><span class="small text-muted">{{ d.seller.email }}</span></td>
+      <td class="small">
+        {% if d.seller.upi_id %}<code>{{ d.seller.upi_id }}</code>{% else %}<span class="text-danger">UPI ID not added</span>{% endif %}
+        {% if d.seller.upi_qr %}<br><a href="{{ url_for('media', filename=d.seller.upi_qr) }}" target="_blank" rel="noopener"><img src="{{ url_for('media', filename=d.seller.upi_qr) }}" alt="UPI QR" style="max-width:90px;" class="img-thumbnail mt-1"></a>{% endif %}
+      </td>
+      <td>{{ d.count }}</td>
+      <td>₹{{ d.gross }}</td>
+      <td>− ₹{{ d.commission }}</td>
+      <td class="fw-bold text-success">₹{{ d.net }}</td>
+      <td>
+        {% if d.seller.upi_id %}
+        <form method="POST" action="{{ url_for('admin_payout_seller', seller_id=d.seller.id) }}" data-confirm="Have you sent ₹{{ d.net }} to {{ d.seller.upi_id }}? Click OK to mark this payout as done.">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="upi_id" value="{{ d.seller.upi_id }}">
+          <input type="hidden" name="amount" value="{{ '%.2f'|format(d.net) }}">
+          <input type="text" name="reference" class="form-control form-control-sm mb-1" placeholder="UPI ref (optional)" maxlength="60">
+          <button class="btn btn-sm btn-success w-100">Payout done</button>
+        </form>
+        {% else %}<span class="badge bg-secondary">Waiting for seller's UPI</span>{% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="text-center text-muted">No payouts due.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if recent_payouts %}
+<h6 class="mt-4 mb-2">Recent payouts</h6>
+<div class="table-responsive">
+<table class="table table-sm table-bordered bg-white small">
+  <thead><tr><th>Date</th><th>Seller</th><th>Orders</th><th>Commission</th><th>Paid</th><th>UPI / Ref</th></tr></thead>
+  <tbody>
+    {% for p in recent_payouts %}
+    <tr><td>{{ p.created_at|ist }}</td><td>{{ p.seller.display_name }}</td><td>{{ p.order_count }}</td>
+        <td>₹{{ p.commission }}</td><td class="fw-bold">₹{{ p.amount }}</td>
+        <td>{{ p.upi_id }}{% if p.reference %} · {{ p.reference }}{% endif %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+<h3 class="mb-3 mt-5">Seller-wise Sales Report</h3>
+<table class="table table-bordered bg-white">
+  <thead>
+    <tr><th>Pharmacy / Seller</th><th>Email</th><th>Total Orders</th><th>Units Sold</th><th>Delivered</th><th>Total Revenue</th><th>Status</th><th>Action</th></tr>
+  </thead>
+  <tbody>
+    {% for s in seller_sales %}
+    <tr>
+      <td>{{ s.seller.display_name }}
+        {% if s.seller.verified %}<span class="badge bg-success ms-1">Verified</span>{% elif s.seller.rejected %}<span class="badge bg-danger ms-1">Rejected</span>{% else %}<span class="badge bg-secondary ms-1">Unverified</span>{% endif %}
+      </td>
+      <td>{{ s.seller.email }}</td>
+      <td>{{ s.total_orders }}</td>
+      <td>{{ s.total_units }}</td>
+      <td>{{ s.delivered_orders }}</td>
+      <td class="fw-bold text-success">₹{{ s.total_revenue }}</td>
+      <td>
+        {% if s.seller.blocked %}<span class="badge bg-danger">Blocked</span>
+        {% else %}<span class="badge bg-success">Active</span>{% endif %}
+      </td>
+      <td>
+        {% if s.seller.blocked %}
+        <form method="POST" action="{{ url_for('unblock_user', user_id=s.seller.id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-success">Unblock</button>
+        </form>
+        {% else %}
+        <form method="POST" action="{{ url_for('block_user', user_id=s.seller.id) }}" data-confirm="Block {{ s.seller.display_name }}? Their medicines will be hidden, they will not be able to login, and all their undelivered orders will be cancelled (paid online orders will be marked refund pending).">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-danger">Block</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="text-center text-muted">No sellers registered yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3 class="mb-3 mt-5">Recent User Feedback</h3>
+<div class="row">
+  {% for f in all_feedback %}
+  <div class="col-md-6 mb-3">
+    <div class="card med-card h-100" {% if f.hidden %}style="opacity:.6;"{% endif %}>
+      <div class="card-body">
+        <div class="mb-1">
+          {% for i in range(1,6) %}
+            {% if i <= f.rating %}<span style="color:var(--amber-500);">★</span>{% else %}<span style="color:#e5e7eb;">★</span>{% endif %}
+          {% endfor %}
+        </div>
+        <p class="mb-1">{{ f.message }}</p>
+        <p class="small text-muted mb-0">
+          {{ f.user.name }} &middot; {{ f.created_at|ist('%d-%m-%Y') }}
+          {% if f.order %} &middot; Order: {{ f.order.medicine.name }}{% else %} &middot; <span class="badge bg-secondary">General MedShare Feedback</span>{% endif %}
+          {% if f.hidden %}<span class="badge bg-danger ms-1">Removed</span>{% endif %}
+        </p>
+        {% if f.order %}
+        <form method="POST" action="{{ url_for('toggle_feedback', fb_id=f.id) }}" class="mt-2">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm {{ 'btn-outline-success' if f.hidden else 'btn-outline-danger' }}">{{ 'Restore review' if f.hidden else 'Remove review' }}</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12"><p class="text-muted">No feedback submitted yet.</p></div>
+  {% endfor %}
+</div>
+
+<!-- ADMIN ACCOUNTS -->
+<div class="mt-5">
+  <p class="section-eyebrow mb-1">Team</p>
+  <h5 class="mb-3" style="font-weight:700;">Admin Accounts</h5>
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <table class="table align-middle">
+        <thead><tr><th>Name</th><th>Email</th></tr></thead>
+        <tbody>
+          {% for a in admins %}
+          <tr><td>{{ a.name }}{% if a.id == current_user.id %} <span class="badge bg-success ms-1">You</span>{% endif %}</td><td>{{ a.email }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="col-lg-6">
+      <div class="card form-card">
+        <div class="card-body" style="padding:22px !important;">
+          <h6 class="fw-bold mb-3">Add another admin</h6>
+          <form method="POST" action="{{ url_for('create_admin') }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-2"><input type="text" name="name" class="form-control{{ inv(e, 'name') }}" placeholder="Full name" maxlength="100" value="{{ f.get('name', '') }}" required>{{ ferr(e, 'name') }}</div>
+            <div class="mb-2"><input type="email" name="email" class="form-control{{ inv(e, 'email') }}" placeholder="Email" value="{{ f.get('email', '') }}" required>{{ ferr(e, 'email') }}</div>
+            <div class="row g-2 mb-3">
+              <div class="col"><input type="password" name="password" class="form-control{{ inv(e, 'password') }}" placeholder="Password (min 8)" minlength="8" required>{{ ferr(e, 'password') }}</div>
+              <div class="col"><input type="password" name="confirm_password" class="form-control{{ inv(e, 'confirm_password') }}" placeholder="Confirm password" required>{{ ferr(e, 'confirm_password') }}</div>
+            </div>
+            <button class="btn btn-success w-100">Create Admin</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}

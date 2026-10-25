@@ -1,0 +1,35 @@
+{# Shared medicine card used on the homepage and pharmacy pages #}
+{% macro med_card(m, show_seller=False, show_stock=False) %}
+<div class="card med-card h-100">
+  <div class="med-media">
+    {% if m.image_filename %}
+    <img src="{{ url_for('media', filename=m.image_filename) }}" class="med-card-img" alt="{{ m.name }}" loading="lazy">
+    {% else %}
+    <div class="med-card-img-placeholder">💊</div>
+    {% endif %}
+    {% if m.discount_percent %}<span class="med-ribbon">{{ m.discount_percent }}% OFF</span>{% endif %}
+    {% if m.category %}<span class="med-chip">{{ m.category }}</span>{% endif %}
+  </div>
+  <div class="card-body">
+    <h5 class="card-title mb-0">{{ m.name }}</h5>
+    {% if m.generic_name %}<p class="generic-name mb-0">Generic: {{ m.generic_name }}</p>{% endif %}
+    <div class="price-row">
+      <span class="price-now">₹{{ m.discounted_price }}</span>
+      <span class="price-was">₹{{ m.original_price }}</span>
+    </div>
+    <p class="med-meta mb-1">
+      Expires {{ m.expiry_date }}
+      {% if m.days_to_expiry <= 7 %}<span class="badge bg-danger ms-1">⚠️ Only {{ m.days_to_expiry }} days left!</span>
+      {% elif m.days_to_expiry <= 30 %}<span class="badge bg-warning text-dark ms-1">⏳ {{ m.days_to_expiry }} days left</span>
+      {% endif %}
+    </p>
+    {% if show_seller %}<p class="med-meta mb-1">Sold by <strong>{{ m.seller.display_name }}</strong></p>{% endif %}
+    {% if show_stock %}<p class="med-meta mb-1">In stock: {{ m.quantity }}</p>{% endif %}
+    <a href="{{ url_for('medicine_detail', med_id=m.id) }}" class="btn btn-sm btn-outline-success mt-3">View & Order</a>
+  </div>
+</div>
+{% endmacro %}
+
+{# Form errors: field ke neeche laal message, aur input pe red border #}
+{% macro ferr(e, name) -%}{% if e and e.get(name) %}<div class="field-error" role="alert">⚠ {{ e.get(name) }}</div>{% endif %}{%- endmacro %}
+{% macro inv(e, name) -%}{{ ' is-invalid' if e and e.get(name) else '' }}{%- endmacro %}

@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %} - Pay Online{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width: 640px;">
+  <h3 class="mb-3">Complete your payment</h3>
+  <div class="card form-card">
+    <div class="card-body p-4">
+      {% for o in orders %}
+      <div class="d-flex justify-content-between small mb-2">
+        <span>{{ o.medicine.name }} <span class="text-muted">x{{ o.quantity }}</span></span>
+        <span>₹{{ o.line_total }}</span>
+      </div>
+      {% endfor %}
+      <hr>
+      <div class="d-flex justify-content-between fw-bold mb-3">
+        <span>Total to pay</span><span>₹{{ total }}</span>
+      </div>
+
+      <button type="button" id="payBtn" class="btn btn-success w-100">💳 Pay ₹{{ total }}</button>
+      <a href="{{ url_for('my_orders') }}" class="btn btn-link w-100 mt-2">Pay later from My Orders</a>
+      <p class="small text-muted mt-3 mb-0">
+        Payments are processed securely by Razorpay. Your order is confirmed only after payment succeeds.
+        Please pay within {{ UNPAID_TIMEOUT }} minutes of ordering, otherwise the order is cancelled automatically.
+      </p>
+    </div>
+  </div>
+
+  <form id="verifyForm" method="POST" action="{{ url_for('pay_verify') }}" class="d-none">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="razorpay_order_id" id="f_order">
+    <input type="hidden" name="razorpay_payment_id" id="f_payment">
+    <input type="hidden" name="razorpay_signature" id="f_sig">
+  </form>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+  var options = {
+    key: {{ key_id|tojson }},
+    amount: {{ amount_paise }},
+    currency: "INR",
+    name: "MedShare",
+    description: "Near-expiry medicines order",
+    order_id: {{ rzp_order_id|tojson }},
+    handler: function (resp) {
+      document.getElementById('f_order').value = resp.razorpay_order_id;
+      document.getElementById('f_payment').value = resp.razorpay_payment_id;
+      document.getElementById('f_sig').value = resp.razorpay_signature;
+      document.getElementById('verifyForm').submit();
+    },
+    theme: { color: "#10b981" }
+  };
+  document.getElementById('payBtn').addEventListener('click', function () {
+    new Razorpay(options).open();
+  });
+  // page khulte hi popup apne aap khul jaye
+  window.addEventListener('load', function () { document.getElementById('payBtn').click(); });
+</script>
+{% endblock %}

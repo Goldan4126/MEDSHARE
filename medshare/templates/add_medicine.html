@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import ferr, inv %}
+{% block content %}
+{% set med = medicine if medicine is defined else none %}
+{% set f = form or {} %}
+{% set e = errors or {} %}
+{% set min_date = med.expiry_date.isoformat() if (med and med.status == 'approved' and med.expiry_date.isoformat() < tomorrow) else tomorrow %}
+<div class="container py-4">
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card form-card">
+      <div class="card-body p-4">
+        <p class="section-eyebrow mb-1">{{ 'Edit listing' if med else 'New listing' }}</p>
+        <h3 class="mb-1">{{ 'Edit Medicine' if med else 'Add Medicine' }}</h3>
+        <p class="text-muted mb-4">{% if med %}Update stock, discount or details. Changing the name, category, expiry, price or photo of an approved listing sends it to admin for re-approval.{% else %}Your listing goes live after admin approval.{% endif %}</p>
+        <form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Medicine Photo <span class="text-muted">(optional)</span></label>
+            <label for="photoInput" class="upload-box d-block">
+              <div id="uploadHint">{% if med and med.image_filename %}🖼️ Current photo — click to replace{% else %}📷 Click to upload a photo (PNG/JPG, max 5MB){% endif %}</div>
+              <img id="imagePreview" alt="Preview"{% if med and med.image_filename %} src="{{ url_for('media', filename=med.image_filename) }}" style="display:block;"{% endif %}>
+            </label>
+            <input type="file" id="photoInput" name="photo" accept=".png,.jpg,.jpeg,.webp" class="d-none">
+            {% if form %}<p class="small text-muted mb-0 mt-1">Browsers cannot keep a chosen photo - if you picked a new one, please choose it again.</p>{% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Medicine Name</label>
+            <input type="text" name="name" class="form-control{{ inv(e, 'name') }}" maxlength="150" value="{{ f.get('name', '') if form else (med.name if med else '') }}" required>
+            {{ ferr(e, 'name') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Generic Name <span class="text-muted">(e.g. Paracetamol)</span></label>
+            <input type="text" name="generic_name" class="form-control{{ inv(e, 'generic_name') }}" maxlength="150" value="{{ f.get('generic_name', '') if form else ((med.generic_name or '') if med else '') }}">
+            {{ ferr(e, 'generic_name') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            <select name="category" class="form-select{{ inv(e, 'category') }}">
+              {% for c in categories %}<option value="{{ c }}" {% if ((f.get('category') == c) if form else (med and med.category == c)) %}selected{% endif %}>{{ c }}</option>{% endfor %}
+            </select>
+            {{ ferr(e, 'category') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Expiry Date</label>
+            <input type="date" name="expiry_date" class="form-control{{ inv(e, 'expiry_date') }}" min="{{ min_date }}" value="{{ f.get('expiry_date', '') if form else (med.expiry_date.isoformat() if med else '') }}" required>
+            {{ ferr(e, 'expiry_date') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Original Price (₹)</label>
+            <input type="number" step="0.01" min="0.01" max="1000000" name="original_price" class="form-control{{ inv(e, 'original_price') }}" value="{{ f.get('original_price', '') if form else (med.original_price if med else '') }}" required>
+            {{ ferr(e, 'original_price') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Quantity{% if med %} <span class="text-muted">(stock available — 0 hides it)</span>{% endif %}</label>
+            <input type="number" step="1" min="{{ 0 if med else 1 }}" max="10000" name="quantity" class="form-control{{ inv(e, 'quantity') }}" value="{{ f.get('quantity', '') if form else (med.quantity if med else '') }}" required>
+            {{ ferr(e, 'quantity') }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Discount (%)</label>
+            <input type="number" step="1" min="0" max="100" name="discount_percent" class="form-control{{ inv(e, 'discount_percent') }}" value="{{ f.get('discount_percent', '') if form else (('%g'|format(med.discount_percent or 0)) if med else 20) }}" required>
+            {{ ferr(e, 'discount_percent') }}
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-success flex-fill">{{ 'Save Changes' if med else 'Submit for Approval' }}</button>
+            {% if med %}<a href="{{ url_for('my_medicines') }}" class="btn btn-outline-secondary">Cancel</a>{% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+document.getElementById('photoInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  const preview = document.getElementById('imagePreview');
+  const hint = document.getElementById('uploadHint');
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      preview.src = ev.target.result;
+      preview.style.display = 'block';
+      hint.textContent = '✅ ' + file.name + ' — click to change';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+</script>
+{% endblock %}

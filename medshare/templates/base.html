@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MedShare{% block title %}{% endblock %}</title>
+<meta name="theme-color" content="#0a3326">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8A%3C/text%3E%3C/svg%3E">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="{{ url_for('index') }}">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5a5 5 0 0 1-7-7l7-7a5 5 0 0 1 7 7z"/><path d="M8.5 8.5l7 7"/></svg>
+      </span>
+      MedShare
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Buy Medicines</a></li>
+        {% if current_user and current_user.role in ['patient', 'seller'] %}
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('view_wishlist') }}">
+            <span aria-hidden="true">🔖</span>
+            Wishlist
+            {% if wishlist_ids %}<span class="badge bg-secondary rounded-pill">{{ wishlist_ids|length }}</span>{% endif %}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('view_cart') }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            Cart
+            {% if cart_count > 0 %}<span class="badge bg-success rounded-pill">{{ cart_count }}</span>{% endif %}
+          </a>
+        </li>
+        {% endif %}
+        {% if current_user %}
+          {% if current_user.role == 'seller' %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/></svg>
+              Seller Hub
+              {% if expiring_count > 0 %}<span class="badge bg-danger rounded-pill">{{ expiring_count }}</span>{% endif %}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="{{ url_for('add_medicine') }}">Add Medicine</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('my_medicines') }}">My Medicines</a></li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('seller_orders') }}">Seller Orders
+                  {% if expiring_count > 0 %}<span class="badge bg-danger rounded-pill">{{ expiring_count }}</span>{% endif %}
+                </a>
+              </li>
+              <li><a class="dropdown-item" href="{{ url_for('seller_analytics') }}">Analytics</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('seller_earnings') }}">Earnings</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('seller_profile_edit') }}">Edit Profile</a></li>
+            </ul>
+          </li>
+          {% endif %}
+          {% if current_user.role == 'admin' %}
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_dashboard') }}">Admin Panel</a></li>
+          {% endif %}
+          <li class="nav-item dropdown ms-lg-2">
+            <a class="nav-link user-chip dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <span class="avatar">{{ current_user.name[:1] }}</span>
+              <span class="who"><strong>{{ current_user.name }}</strong><small>{{ current_user.role|role_label }}</small></span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="{{ url_for('my_orders') }}">My Orders</a></li>
+              {% if current_user.role in ['patient', 'seller'] %}
+              <li><a class="dropdown-item" href="{{ url_for('change_password') }}">Change Password</a></li>
+              {% endif %}
+              {% if current_user.role == 'patient' %}
+              <li><a class="dropdown-item" href="{{ url_for('become_seller') }}">Become a Seller</a></li>
+              {% endif %}
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+          </li>
+        {% else %}
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">Login</a></li>
+          <li class="nav-item"><a class="btn btn-success ms-lg-2 px-4" href="{{ url_for('register') }}">Register</a></li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container pt-4">
+  {% if current_user and current_user.role == 'seller' and not current_user.verified %}
+    {% if current_user.rejected %}
+    <div class="alert alert-danger" role="alert">
+      <strong>Your seller registration was rejected.</strong>
+      {% if current_user.reject_reason %}Reason: {{ current_user.reject_reason }}.{% endif %}
+      <a href="{{ url_for('seller_profile_edit') }}" class="alert-link">Edit your profile</a> to fix it - it will go to admin again.
+    </div>
+    {% else %}
+    <div class="alert alert-warning" role="alert">
+      <strong>Pending admin verification.</strong> You can list medicines once admin approves your pharmacy.
+    </div>
+    {% endif %}
+  {% endif %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+</div>
+
+{% block content %}{% endblock %}
+
+<footer class="site-footer mt-5">
+  <div class="container">
+    <div class="row g-4 py-3">
+      <div class="col-md-4">
+        <div class="brand-line"><span class="brand-mark" style="width:32px;height:32px;border-radius:10px;"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M10.5 20.5a5 5 0 0 1-7-7l7-7a5 5 0 0 1 7 7z"/><path d="M8.5 8.5l7 7"/></svg></span>MedShare</div>
+        <p class="small mb-0">Connecting people with near-expiry medicines at genuine discounts — helping pharmacies reduce wastage and making healthcare more affordable.</p>
+      </div>
+      <div class="col-md-2">
+        <div class="fw-bold text-white mb-2">Quick Links</div>
+        <div class="d-flex flex-column gap-2">
+          <a href="{{ url_for('index') }}">Buy Medicines</a>
+          <a href="{{ url_for('register') }}">Join as Seller</a>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="fw-bold text-white mb-2">Account</div>
+        <div class="d-flex flex-column gap-2">
+          <a href="{{ url_for('login') }}">Login</a>
+          <a href="{{ url_for('register') }}">Register</a>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="fw-bold text-white mb-2">Contact Us</div>
+        <p class="small mb-1">📧 support@medshare.com</p>
+        <p class="small mb-1">📞 +91 98765 43210</p>
+        <p class="small mb-0">📍 Polytechnic Campus, India</p>
+      </div>
+    </div>
+    <hr class="mt-4">
+    <p class="small text-center mb-0">Student minor project prototype &middot; Not for real medical transactions</p>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script>
+/* Form mein galti ho toh seedha pehli galat field par le jao (page lamba ho toh error upar chhoot jaata hai) */
+(function () {
+  var bad = document.querySelector('.is-invalid, .field-error');
+  if (!bad) { return; }
+  var target = bad.classList.contains('field-error') ? (bad.previousElementSibling || bad) : bad;
+  target.scrollIntoView({ block: 'center' });
+  if (target.focus) { try { target.focus({ preventScroll: true }); } catch (err) { /* ignore */ } }
+})();
+</script>
+<script>
+/* data-confirm wale forms submit se pehle confirm box dikhate hain */
+document.addEventListener('submit', function (e) {
+  var msg = e.target.getAttribute && e.target.getAttribute('data-confirm');
+  if (msg && !window.confirm(msg)) { e.preventDefault(); }
+});
+</script>
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce || !('IntersectionObserver' in window)) { return; }
+  document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('pending'); });
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) { return; }
+      e.target.classList.add('in');
+      io.unobserve(e.target);
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+
+  document.querySelectorAll('[data-count]').forEach(function (el) {
+    var target = parseInt(el.getAttribute('data-count'), 10);
+    if (isNaN(target) || target < 1) { return; }
+    var done = false;
+    var cio = new IntersectionObserver(function (entries) {
+      if (!entries[0].isIntersecting || done) { return; }
+      done = true; cio.disconnect();
+      var start = null, dur = 900;
+      function step(ts) {
+        if (start === null) { start = ts; }
+        var p = Math.min((ts - start) / dur, 1);
+        el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))) + '+';
+        if (p < 1) { requestAnimationFrame(step); }
+      }
+      requestAnimationFrame(step);
+    }, { threshold: 0.5 });
+    cio.observe(el);
+  });
+})();
+</script>
+</body>
+</html>

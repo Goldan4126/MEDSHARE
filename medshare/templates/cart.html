@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import ferr, inv %}
+{% block content %}
+{% set f = form or {} %}
+{% set e = errors or {} %}
+<div class="container py-4">
+<h3 class="mb-3">🛒 My Cart</h3>
+
+{% if items %}
+{% if has_unavailable %}
+<div class="alert alert-warning">
+  Some items in your cart are expired, out of stock or no longer available. Please remove them before placing your order.
+</div>
+{% endif %}
+<div class="card form-card mb-4">
+  <div class="card-body p-4">
+    <table class="table align-middle">
+      <thead>
+        <tr><th>Medicine</th><th>Price</th><th>Quantity</th><th>Subtotal</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>{{ item.medicine.name }}
+            {% if not item.medicine.is_available %}<span class="badge bg-danger ms-1">{{ item.medicine.unavailable_reason }}</span>{% endif %}
+          </td>
+          <td>₹{{ item.medicine.discounted_price }}</td>
+          <td style="max-width:110px;">
+            <form method="POST" action="{{ url_for('update_cart_item', item_id=item.id) }}" class="d-flex gap-1">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="{{ item.medicine.quantity }}" class="form-control form-control-sm">
+              <button class="btn btn-sm btn-outline-success">↻</button>
+            </form>
+          </td>
+          <td>{% if item.medicine.is_available %}₹{{ item.subtotal }}{% else %}—{% endif %}</td>
+          <td>
+            <form method="POST" action="{{ url_for('remove_cart_item', item_id=item.id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <h5 class="text-end">Total: <span class="text-success">₹{{ total }}</span></h5>
+  </div>
+</div>
+
+<div class="card form-card">
+  <div class="card-body p-4">
+    <h5 class="mb-3">Delivery Address</h5>
+    <form method="POST" action="{{ url_for('cart_checkout') }}" id="checkoutForm">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="text" name="address_pincode" id="pincodeInput" class="form-control mb-2{{ inv(e, 'address_pincode') }}" placeholder="Pincode" pattern="[0-9]{6}" maxlength="6" title="6 digit pincode" value="{{ f.get('address_pincode', '') }}" required>
+      {{ ferr(e, 'address_pincode') }}
+      <p class="small mb-2" id="pincodeStatus"></p>
+      <div class="row g-2 mb-2">
+        <div class="col-6">
+          <input type="text" name="address_district" id="districtInput" class="form-control{{ inv(e, 'address_district') }}" placeholder="District" value="{{ f.get('address_district', '') }}" required>
+        </div>
+        <div class="col-6">
+          <input type="text" name="address_city" id="cityInput" class="form-control{{ inv(e, 'address_city') }}" placeholder="City" value="{{ f.get('address_city', '') }}" required>
+        </div>
+      </div>
+      <select name="address_state" id="stateInput" class="form-select mb-2{{ inv(e, 'address_state') }}" data-selected="{{ f.get('address_state', '') }}" required>
+        <option value="" disabled selected>Select State</option>
+        <option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option>
+        <option>Bihar</option><option>Chhattisgarh</option><option>Goa</option><option>Gujarat</option>
+        <option>Haryana</option><option>Himachal Pradesh</option><option>Jharkhand</option>
+        <option>Karnataka</option><option>Kerala</option><option>Madhya Pradesh</option>
+        <option>Maharashtra</option><option>Manipur</option><option>Meghalaya</option>
+        <option>Mizoram</option><option>Nagaland</option><option>Odisha</option><option>Punjab</option>
+        <option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option>
+        <option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option>
+        <option>West Bengal</option><option>Andaman and Nicobar Islands</option><option>Chandigarh</option>
+        <option>Dadra and Nagar Haveli and Daman and Diu</option><option>Delhi</option>
+        <option>Jammu and Kashmir</option><option>Ladakh</option><option>Lakshadweep</option>
+        <option>Puducherry</option>
+      </select>
+      <input type="text" name="address_line" class="form-control mb-2{{ inv(e, 'address_line') }}" placeholder="House no, street, area" value="{{ f.get('address_line', '') }}" required>
+      <input type="tel" name="address_phone" class="form-control mb-3{{ inv(e, 'address_phone') }}" placeholder="Contact Phone Number" value="{{ f.get('address_phone', '') }}" pattern="[0-9]{10}" maxlength="10" title="10 digit phone number" required>
+      {{ ferr(e, 'address_district') }}{{ ferr(e, 'address_city') }}{{ ferr(e, 'address_state') }}{{ ferr(e, 'address_line') }}{{ ferr(e, 'address_phone') }}
+      {% include '_payment_choice.html' %}
+      <button class="btn btn-success w-100" type="submit" {% if has_unavailable %}disabled{% endif %}>Place Order for All Items</button>
+    </form>
+  </div>
+</div>
+
+<script>
+const pincodeInput = document.getElementById('pincodeInput');
+const districtInput = document.getElementById('districtInput');
+const cityInput = document.getElementById('cityInput');
+const stateInput = document.getElementById('stateInput');
+const pincodeStatus = document.getElementById('pincodeStatus');
+
+if (stateInput.dataset.selected) { stateInput.value = stateInput.dataset.selected; }
+
+pincodeInput.addEventListener('input', function() {
+  const pin = pincodeInput.value.trim();
+  if (pin.length !== 6 || !/^[0-9]{6}$/.test(pin)) {
+    pincodeStatus.textContent = '';
+    return;
+  }
+  pincodeStatus.textContent = 'Looking up pincode...';
+  pincodeStatus.className = 'small mb-2 text-muted';
+
+  fetch('https://api.postalpincode.in/pincode/' + pin)
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      const result = data && data[0];
+      if (result && result.Status === 'Success' && result.PostOffice && result.PostOffice.length) {
+        const office = result.PostOffice[0];
+        districtInput.value = office.District || '';
+        cityInput.value = office.Block && office.Block !== 'NA' ? office.Block : office.District || '';
+        stateInput.value = office.State || '';
+        pincodeStatus.textContent = '✅ Location found — please verify before ordering';
+        pincodeStatus.className = 'small mb-2 text-success';
+      } else {
+        pincodeStatus.textContent = 'Could not find this pincode. Please fill District/City/State manually.';
+        pincodeStatus.className = 'small mb-2 text-warning';
+      }
+    })
+    .catch(function() {
+      pincodeStatus.textContent = 'Could not reach lookup service. Please fill District/City/State manually.';
+      pincodeStatus.className = 'small mb-2 text-warning';
+    });
+});
+</script>
+
+{% else %}
+<div class="empty-state">
+  <div class="icon">🛒</div>
+  <h5>Your cart is empty</h5>
+  <p>Browse medicines and add them to your cart.</p>
+  <a href="{{ url_for('index') }}" class="btn btn-success mt-2">Buy Medicines</a>
+</div>
+{% endif %}
+</div>
+{% endblock %}

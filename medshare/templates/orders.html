@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% from '_pagination.html' import render_pager %}
+{% block content %}
+<div class="container py-4">
+<h3 class="mb-3">My Orders</h3>
+{% for o in orders %}
+<div class="card form-card mb-3">
+  <div class="card-body p-4">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1">{{ o.medicine.name }} <span class="text-muted small">x{{ o.quantity }}</span></h5>
+        <p class="small text-muted mb-1">Ordered on {{ o.order_date|ist }} &middot; ₹{{ o.price_each }} each &middot; <strong>Total ₹{{ o.line_total }}</strong></p>
+        <p class="small text-muted mb-0">Delivery to: {{ o.delivery_address }}</p>
+        <p class="small mb-0 mt-1">
+          {% if o.payment_method == 'Online' %}
+            {% if o.payment_status == 'Paid' %}<span class="badge bg-success">💳 Paid online</span>
+            {% elif o.payment_status in ('Refund Pending', 'Refunding') %}<span class="badge bg-warning text-dark">↩ Refund pending</span>
+            {% elif o.payment_status == 'Refunded' %}<span class="badge bg-info text-dark">↩ Refunded to your account</span>
+            {% elif o.status != 'Cancelled' %}<span class="badge bg-danger">💳 Payment pending</span>
+            {% else %}<span class="badge bg-secondary">💳 Online (not paid)</span>{% endif %}
+          {% else %}<span class="badge bg-secondary">💵 Cash on Delivery</span>{% endif %}
+        </p>
+      </div>
+      <div>
+        {% if o.status == 'Pending' %}
+        <div class="d-flex gap-2 align-items-start">
+          {% if o.payment_method == 'Online' and o.payment_status == 'Unpaid' and o.payment_group %}
+          <a href="{{ url_for('pay_group', group=o.payment_group) }}" class="btn btn-sm btn-success">Pay Now</a>
+          <span class="small text-muted align-self-center">Pay within {{ UNPAID_TIMEOUT }} min of ordering</span>
+          {% endif %}
+          <form method="POST" action="{{ url_for('cancel_order', order_id=o.id) }}" data-confirm="Cancel this order?">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-danger">Cancel Order</button>
+          </form>
+        </div>
+        {% elif o.status == 'Delivered' %}
+          {% if o.feedback %}
+          <span class="small text-success">✓ Feedback given</span>
+          {% else %}
+          <a href="{{ url_for('order_feedback', order_id=o.id) }}" class="btn btn-sm btn-outline-success">⭐ Rate this Medicine</a>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    {% if o.status == 'Cancelled' %}
+    <div class="mt-3"><span class="badge bg-danger">Cancelled</span>{% if o.cancel_note %}<span class="small text-muted ms-2">{{ o.cancel_note }}.</span>{% endif %}</div>
+    {% else %}
+    {% set steps = ['Pending', 'Confirmed', 'Out for Delivery', 'Delivered'] %}
+    {% set current_index = steps.index(o.status) if o.status in steps else 0 %}
+    <div class="order-timeline mt-4">
+      {% for step in steps %}
+      <div class="order-timeline-step {{ 'done' if loop.index0 <= current_index else '' }} {{ 'active' if loop.index0 == current_index else '' }}">
+        <div class="order-timeline-dot"></div>
+        <div class="order-timeline-label">{{ step }}</div>
+      </div>
+      {% if not loop.last %}<div class="order-timeline-line {{ 'done' if loop.index0 < current_index else '' }}"></div>{% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="icon">📦</div>
+  <h5>No orders yet</h5>
+  <p>Browse medicines and place your first order.</p>
+  <a href="{{ url_for('index') }}" class="btn btn-success mt-2">Buy Medicines</a>
+</div>
+{% endfor %}
+{{ render_pager(pager, 'my_orders', request.args) }}
+</div>
+{% endblock %}
